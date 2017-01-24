@@ -1,0 +1,233 @@
+<!doctype html>
+<html>
+<head>
+    <title>Socket.IO chat</title>
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" rel="stylesheet" type="text/css"/>
+   <!-- <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font: 13px Helvetica, Arial; }
+        form { background: #000; padding: 3px; position: fixed; bottom: 0; width: 100%; }
+        form input { border: 0; padding: 10px; width: 90%; margin-right: .5%; }
+        form button { width: 9%; background: rgb(130, 224, 255); border: none; padding: 10px; }
+        #messages { list-style-type: none; margin: 0; padding: 0; }
+        #messages li { padding: 5px 10px; }
+        #messages li:nth-child(odd) { background: #eee; }
+    </style>-->
+</head>
+<body>
+<ul id="messages"></ul>
+<form action="">
+    <div class="form-group">
+    <input class="form-control" id="m" autocomplete="off" />
+</div>
+
+    <button class=" btn btn-primary " id="send">Send</button>
+
+</form>
+
+<button class=" btn " id="broadcast" >Broadcast</button>
+
+
+<button class=" btn " id="sendroom">Send to room</button>
+
+
+    <div class="form-group">
+<input name="room" type="text" id="room"  class="form-control"/>
+        </div>
+
+            <button class=" btn " id="createroom">create a room</button>
+
+
+<h1>User list</h1>
+<ul id="userlist"></ul>
+<h1>Room list</h1>
+<ul id="roomlist"></ul>
+<script   src="https://code.jquery.com/jquery-3.1.1.min.js"   integrity="sha256-hVVnYaiADRTO2PzUGmuLJr8BLUSjGIZsDYGmIJLv2b8="   crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/1.7.2/socket.io.min.js"></script>
+<script>
+    var name='';
+    do{
+        name = prompt("Your name:",'');
+        console.log((name));
+    }while((name == null) || (name == "") );
+
+    var selectedUser=[];
+    var socket = io();
+    var myuser={name:name,id:null};
+    var myroom=[];
+    $('#broadcast').click(function(){
+
+        socket.emit('broadcast',name,$('#m').val());
+        $('#m').val('');
+    });
+    $('#sendroom').click(function(){
+
+
+      console.log($('input[name=rooms]:checked').next().val());
+        var selectedroom=$('input[name=rooms]:checked').next().val();
+        if(selectedroom==undefined){
+            alert('Please choose a room!!!');
+            return false;
+        }
+        socket.emit('sendroom',name,$('#m').val(),selectedroom);
+        $('#m').val('');
+    });
+    $('#createroom').click(function(){
+        if($('#room').val()==null||$('#room').val()==""){
+            alert("Please enter room name");
+            return;
+        }
+
+        socket.emit('createroom',myuser,$('#room').val());
+        myroom.push($('#room').val());
+        $('#room').val('');
+    });
+    socket.on('crsfirst',function(msg,rooms,roomname){
+        $('#messages').append($('<li>').text(msg));
+        $('#roomlist').empty();
+        console.log(myroom);
+        rooms.forEach(function(value){
+
+            if(myroom.indexOf(value.name)==-1) {
+                console.log(myroom);
+                $('#roomlist').append($('<li>').html('<input type="radio" name="rooms"/>' + value.name + '(' + value.users.length + ')<input type="hidden" value="' + value.name + '"/><input class="btnroom" type="button" value="Join" />'));
+            }else{
+                $('#roomlist').append($('<li>').html('<input type="radio" name="rooms"/>' + value.name + '(' + value.users.length + ')<input type="hidden" value="' + value.name + '"/><input class="btnroom" type="button" value="Leave" />'));
+
+            }
+        });
+        $('.btnroom').click(function(e){
+            e.preventDefault();
+
+            var room=$(this).prev().val();
+            console.log($(this).val());
+            if($(this).val()=='Join'){
+                console.log('join'+room);
+                socket.emit('join',room,myuser);
+                myroom.push(room);
+
+            }else{
+                console.log('leave'+room);
+                socket.emit('leave',room,myuser);
+                myroom.splice(myroom.indexOf(room),1);
+
+            }
+
+        });
+    });
+    socket.on('crs',function(rooms,roomname){
+
+        $('#roomlist').empty();
+        console.log(myroom);
+        rooms.forEach(function(value){
+
+            if(myroom.indexOf(value.name)==-1) {
+                console.log(myroom);
+                $('#roomlist').append($('<li>').html('<input type="radio" name="rooms"/>' + value.name + '(' + value.users.length + ')<input type="hidden" value="' + value.name + '"/><input class="btnroom" type="button" value="Join" />'));
+            }else{
+                $('#roomlist').append($('<li>').html('<input type="radio" name="rooms"/>' + value.name + '(' + value.users.length + ')<input type="hidden" value="' + value.name + '"/><input class="btnroom" type="button" value="Leave" />'));
+
+            }
+            });
+        $('.btnroom').click(function(e){
+            e.preventDefault();
+
+            var room=$(this).prev().val();
+       console.log($(this).val());
+            if($(this).val()=='Join'){
+                console.log('join'+room);
+                socket.emit('join',room,myuser);
+               myroom.push(room);
+
+            }else{
+                console.log('leave'+room);
+                socket.emit('leave',room,myuser);
+              myroom.splice(myroom.indexOf(room),1);
+
+            }
+
+        });
+    });
+
+socket.on('roommsg',function(msg){
+    $('#messages').append($('<li>').text(msg));
+});
+    $('#messages').append($('<li>').text('Welcome,'+name));
+    socket.emit('username',name);
+    socket.on('userlist', function(userlist,name,id,rooms){
+
+        console.log(userlist);
+        console.log(id);
+     myuser.id=id;
+        $('#userlist').empty();
+        $.each(userlist,function(index,user){
+    $('#userlist').append($('<li>').html('<label for="users"><input id="'+user.id+'" type="radio" name="users" class="users" />'+user.username+'</label>'));
+
+            $('#roomlist').empty();
+            console.log(rooms);
+            rooms.forEach(function(value){
+
+                if(myroom.indexOf(value.name)==-1) {
+                    console.log(myroom);
+                    $('#roomlist').append($('<li>').html('<input type="radio" name="rooms"/>' + value.name + '(' + value.users.length + ')<input type="hidden" value="' + value.name + '"/><input class="btnroom" type="button" value="Join" />'));
+                }else{
+                    $('#roomlist').append($('<li>').html('<input type="radio" name="rooms"/>' + value.name + '(' + value.users.length + ')<input type="hidden" value="' + value.name + '"/><input class="btnroom" type="button" value="Leave" />'));
+
+                }
+            });
+            $('.btnroom').click(function(e){
+                e.preventDefault();
+
+                var room=$(this).prev().val();
+                console.log($(this).val());
+                if($(this).val()=='Join'){
+                    console.log('join'+room);
+                    socket.emit('join',room,myuser);
+                    myroom.push(room);
+
+                }else{
+                    console.log('leave'+room);
+                    socket.emit('leave',room,myuser);
+                    myroom.splice(myroom.indexOf(room),1);
+
+                }
+
+            });
+        });
+
+
+
+    });
+    socket.on('clmsg',function(msg){
+        $('#messages').append($('<li>').text(msg));
+    });
+    $('form').submit(function(){
+        console.log($('#m').val());
+
+        selectedUser=$('input[name=users]:checked').attr('id');
+       if($('input:checked').attr('id')==undefined){
+           alert('Please choose a user to send message!!!');
+           return false;
+       }
+        socket.emit('chat message',{ msg:$('#m').val(),user:selectedUser,mname:myuser.name});
+        $('#m').val('');
+
+        return false;
+    });
+    socket.on('chat message', function(msg){
+        console.log(msg);
+        $('#messages').append($('<li>').text(msg));
+    });
+    socket.on('exit', function(userlist,name,disrooms){
+        $('#userlist').empty();
+       $.each(userlist,function(index,user){
+            $('#userlist').append($('<li>').html('<label for="users"><input id="'+user.id+'" type="radio" name="users" class="users" />'+user.username+'</label>'));
+        });
+        $('#messages').append($('<li>').text(name+' is leaving~~~'));
+
+    });
+
+
+</script>
+</body>
+</html>
