@@ -1,4 +1,4 @@
-This is a real-time online chatting project,built with socket.io ,node js,jquery
+This is a real-time online chatting project,built with socket.io ,node js,jquery.use "node index.js" to run the application.
 Function:
 *  welcome message
 *  user's coming and leaving notification(public)
